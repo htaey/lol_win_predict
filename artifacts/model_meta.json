@@ -1,0 +1,10 @@
+{
+  "model_10": "meta_model10.pkl",
+  "model_15": "meta_model15.pkl",
+  "model_all": "meta_model.pkl",
+  "version": "v1.0.0",
+  "threshold_reversal": 0.5,
+  "features_10": ["feat1_at10", "feat2_at10", "feat3_at10"],
+  "features_15": ["feat1_at15", "feat2_at15", "feat3_at15"],
+  "objective_features": ["firstdragon", "firstherald", "firsttower", "firstblood", "firstmidtower"]
+}

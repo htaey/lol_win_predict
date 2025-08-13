@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>LoL 승리 예측 (10/15분 분리 UI)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    h1 { margin: 0 0 8px; }
+    .version { color: #666; font-size: 14px; margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    fieldset { border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
+    legend { padding: 0 6px; font-weight: 600; }
+    .row { display: grid; grid-template-columns: 1fr 180px; gap: 8px; align-items: center; margin-bottom: 8px; }
+    label { font-size: 14px; color: #333; }
+    input[type="number"] { width: 100%; padding: 6px 8px; border: 1px solid #ccc; border-radius: 8px; }
+    .checkbox-row { display: flex; gap: 16px; flex-wrap: wrap; margin: 8px 0 4px; }
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+    button { padding: 10px 16px; border: 0; border-radius: 10px; cursor: pointer; }
+    .primary { background: #111827; color: white; }
+    .secondary { background: #e5e7eb; color: #111827; }
+    .muted { color: #666; font-size: 13px; }
+    .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-top: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px dashed #eee; }
+    .error { color: #b91c1c; margin-top: 8px; white-space: pre-wrap; }
+    .ok { color: #065f46; }
+    .spinner { display: none; }
+    .cards { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 900px) { .cards { grid-template-columns: 1fr 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>LoL 승리 예측 (10/15분 분리)</h1>
+    <div id="version" class="version"></div>
+
+    <div class="grid">
+      <fieldset>
+        <legend>10분 피처 (features_at10)</legend>
+        <div><strong>오브젝트(공통)</strong></div>
+        <div id="obj10" class="checkbox-row"></div>
+        <div class="muted">※ 아래는 10분 시점의 수치형 피처입니다.</div>
+        <div id="feat10"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>15분 피처 (features_at15)</legend>
+        <div><strong>오브젝트(공통)</strong></div>
+        <div id="obj15" class="checkbox-row"></div>
+        <div class="muted">※ 아래는 15분 시점의 수치형 피처입니다.</div>
+        <div id="feat15"></div>
+      </fieldset>
+    </div>
+
+    <div class="actions">
+      <button id="btnPredict10" class="primary">10분만 예측</button>
+      <button id="btnPredict15" class="primary">15분 / (둘 다 입력 시) 통합</button>
+      <button id="btnReset" class="secondary">초기화</button>
+      <div id="busy" class="muted spinner">예측 중...</div>
+    </div>
+    <div id="err" class="error"></div>
+
+    <div class="cards">
+      <div class="card">
+        <h3>10분 결과</h3>
+        <table><tbody id="res10"></tbody></table>
+      </div>
+      <div class="card">
+        <h3>15분 결과</h3>
+        <table><tbody id="res15"></tbody></table>
+      </div>
+      <div class="card">
+        <h3>메타(통합) 결과</h3>
+        <div id="resMeta" class="muted">두 시점(10·15)을 모두 입력하면 표시됩니다.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const MODEL_INFO_URL = '/model-info';
+    const PREDICT_URL = '/predict';
+    const DEFAULT_ZERO = 0;
+
+    function makeNumberRow(id, label) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const lab = document.createElement('label');
+      lab.setAttribute('for', id);
+      lab.textContent = label;
+      const inp = document.createElement('input');
+      inp.type = 'number';
+      inp.step = 'any';
+      inp.id = id;
+      inp.value = DEFAULT_ZERO;
+      row.appendChild(lab); row.appendChild(inp);
+      return row;
+    }
+    function makeCheckbox(id, label) {
+      const wrap = document.createElement('label');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.id = id; cb.value = 1;
+      wrap.appendChild(cb); wrap.append(' ' + label);
+      return wrap;
+    }
+
+    let feat10List = [], feat15List = [], objList = [], version = 'n/a';
+
+    async function loadModelInfo() {
+      const r = await fetch(MODEL_INFO_URL);
+      const info = await r.json();
+      version = info.version || 'n/a';
+      document.getElementById('version').textContent = `모델 버전: ${version}`;
+
+      const all10 = info.required_features_at10 || [];
+      const all15 = info.required_features_at15 || [];
+      objList = info.objective_features || [];
+
+      const obj10 = document.getElementById('obj10');
+      const obj15 = document.getElementById('obj15');
+      objList.forEach(name => {
+        obj10.appendChild(makeCheckbox(`obj10__${name}`, name));
+        obj15.appendChild(makeCheckbox(`obj15__${name}`, name));
+      });
+
+      feat10List = all10.filter(c => !objList.includes(c));
+      feat15List = all15.filter(c => !objList.includes(c));
+
+      const f10 = document.getElementById('feat10');
+      const f15 = document.getElementById('feat15');
+      feat10List.forEach(name => f10.appendChild(makeNumberRow(`f10__${name}`, name)));
+      feat15List.forEach(name => f15.appendChild(makeNumberRow(`f15__${name}`, name)));
+    }
+
+    function gatherFeaturesAt(which, featList) {
+      const obj = {};
+      objList.forEach(name => {
+        const id = which === 10 ? `obj10__${name}` : `obj15__${name}`;
+        const el = document.getElementById(id);
+        obj[name] = el && el.checked ? 1 : 0;
+      });
+      featList.forEach(name => {
+        const id = which === 10 ? `f10__${name}` : `f15__${name}`;
+        const el = document.getElementById(id);
+        const val = el && el.value !== '' ? Number(el.value) : 0;
+        obj[name] = isNaN(val) ? 0 : val;
+      });
+      return obj;
+    }
+
+    function clearResults() {
+      document.getElementById('res10').innerHTML = '';
+      document.getElementById('res15').innerHTML = '';
+      document.getElementById('resMeta').innerHTML = '두 시점(10·15)을 모두 입력하면 표시됩니다.';
+      document.getElementById('resMeta').className = 'muted';
+      document.getElementById('err').textContent = '';
+    }
+
+    function addRow(tbodyId, label, value) {
+      const tb = document.getElementById(tbodyId);
+      const tr = document.createElement('tr');
+      const td1 = document.createElement('td'); td1.textContent = label;
+      const td2 = document.createElement('td'); td2.textContent = value;
+      tr.appendChild(td1); tr.appendChild(td2);
+      tb.appendChild(tr);
+    }
+
+    function renderResult(json) {
+      clearResults();
+      const r0 = (json.results && json.results[0]) ? json.results[0] : {};
+
+      // 10분 카드
+      if (r0.p10) {
+        addRow('res10', '10분 RF',  r0.p10.rf.toFixed(3));
+        addRow('res10', '10분 XGB', r0.p10.xgb.toFixed(3));
+        addRow('res10', '10분 LR',  r0.p10.lr.toFixed(3));
+      }
+      if (r0.meta_prob_10 != null) {
+        addRow('res10', '10분 메타', r0.meta_prob_10.toFixed(3));
+      }
+
+      // 15분 카드
+      if (r0.p15) {
+        addRow('res15', '15분 RF',  r0.p15.rf.toFixed(3));
+        addRow('res15', '15분 XGB', r0.p15.xgb.toFixed(3));
+        addRow('res15', '15분 LR',  r0.p15.lr.toFixed(3));
+      }
+      if (r0.meta_prob_15 != null) {
+        addRow('res15', '15분 메타', r0.meta_prob_15.toFixed(3));
+      }
+
+      // 통합 메타 카드 (⚠️ 두 시점 모두 있을 때만 표시)
+      const hasBoth = !!(r0.p10 && r0.p15);
+      if (hasBoth && r0.meta_prob_all != null) {
+        const parts = [];
+        parts.push(`통합 메타 확률: <strong>${r0.meta_prob_all.toFixed(3)}</strong>`);
+        if (r0.reversal_by_xgb != null) {
+          parts.push(`역전여부(xgb기준): <strong>${r0.reversal_by_xgb ? 'YES' : 'NO'}</strong>`);
+        }
+        const metaDiv = document.getElementById('resMeta');
+        metaDiv.innerHTML = `<div class="ok">버전 ${json.version || 'n/a'} · ${parts.join(' · ')}</div>`;
+        metaDiv.className = 'ok';
+      }
+      // hasBoth가 아니면 resMeta는 기본 안내 문구 그대로 둠
+    }
+
+    async function callPredict(payload) {
+      const r = await fetch(PREDICT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}\n${await r.text()}`);
+      return r.json();
+    }
+
+    async function doPredict10() {
+      document.getElementById('busy').style.display = 'inline';
+      document.getElementById('err').textContent = '';
+      try {
+        const features_at10 = gatherFeaturesAt(10, feat10List);
+        const payload = { sample: { features_at10 }, return_reversal: false };
+        const json = await callPredict(payload);
+        renderResult(json);
+      } catch (e) {
+        document.getElementById('err').textContent = e.message;
+      } finally {
+        document.getElementById('busy').style.display = 'none';
+      }
+    }
+
+    async function doPredict15() {
+      document.getElementById('busy').style.display = 'inline';
+      document.getElementById('err').textContent = '';
+      try {
+        const features_at10 = gatherFeaturesAt(10, feat10List);
+        const features_at15 = gatherFeaturesAt(15, feat15List);
+
+        // 값이 실제로 입력되었는지 간단 체크(0만 가득이면 비입력으로 간주)
+        const has10 = Object.values(features_at10).some(v => v !== 0);
+        const has15 = Object.values(features_at15).some(v => v !== 0);
+
+        if (!has10 && !has15) throw new Error('최소한 15분 값은 입력하세요.');
+
+        const payload = { sample: {}, return_reversal: true };
+        if (has10) payload.sample.features_at10 = features_at10;
+        if (has15) payload.sample.features_at15 = features_at15;
+
+        const json = await callPredict(payload);
+        renderResult(json); // 둘 다 있으면 통합, 아니면 각 시점만 표시
+      } catch (e) {
+        document.getElementById('err').textContent = e.message;
+      } finally {
+        document.getElementById('busy').style.display = 'none';
+      }
+    }
+
+    function doReset() {
+      document.getElementById('err').textContent = '';
+      clearResults();
+      // 필요하면 입력값 초기화 로직 추가
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      await loadModelInfo();
+      document.getElementById('btnPredict10').addEventListener('click', doPredict10);
+      document.getElementById('btnPredict15').addEventListener('click', doPredict15);
+      document.getElementById('btnReset').addEventListener('click', doReset);
+    });
+  </script>
+</body>
+</html>

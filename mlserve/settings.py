@@ -3,7 +3,7 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'replace-this-in-production'
+SECRET_KEY = 'marrygoround1234'
 DEBUG = True
 ALLOWED_HOSTS = ['*']
 

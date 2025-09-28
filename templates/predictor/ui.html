@@ -43,6 +43,8 @@
         <div id="obj10" class="checkbox-row"></div>
         <div class="muted">※ 아래에 매치 10분 시점을 입력</div>
         <div id="feat10"></div>
+        <div class="muted" style="margin-top: 8px;"><strong>추가 피쳐:</strong></div>
+        <div id="calc10" class="muted" style="font-size: 12px; line-height: 1.4;"></div>
       </fieldset>
 
       <fieldset>
@@ -51,6 +53,8 @@
         <div id="obj15" class="checkbox-row"></div>
         <div class="muted">※ 아래에 매치 15분 시점을 입력</div>
         <div id="feat15"></div>
+        <div class="muted" style="margin-top: 8px;"><strong>추가 피쳐:</strong></div>
+        <div id="calc15" class="muted" style="font-size: 12px; line-height: 1.4;"></div>
       </fieldset>
     </div>
 
@@ -94,6 +98,12 @@
       inp.step = 'any';
       inp.id = id;
       inp.value = DEFAULT_ZERO;
+      
+      // 입력값 변경 시 자동 계산 업데이트
+      inp.addEventListener('input', () => {
+        updateCalculatedValues(inp.id.includes('f10__') ? 10 : 15);
+      });
+      
       row.appendChild(lab); row.appendChild(inp);
       return row;
     }
@@ -106,6 +116,41 @@
     }
 
     let feat10List = [], feat15List = [], objList = [], version = 'n/a';
+    
+    // 피쳐 이름 한국어 매핑
+    const featureNameMap = {
+      'goldat10': '골드(10분)',
+      'csat10': 'CS(10분)',
+      'opp_goldat10': '상대 골드(10분)',
+      'opp_csat10': '상대 CS(10분)',
+      'killsat10': '킬(10분)',
+      'assistsat10': '어시스트(10분)',
+      'deathsat10': '데스(10분)',
+      'opp_killsat10': '상대 킬(10분)',
+      'opp_assistsat10': '상대 어시스트(10분)',
+      'opp_deathsat10': '상대 데스(10분)',
+      'goldat15': '골드(15분)',
+      'csat15': 'CS(15분)',
+      'opp_goldat15': '상대 골드(15분)',
+      'opp_csat15': '상대 CS(15분)',
+      'killsat15': '킬(15분)',
+      'assistsat15': '어시스트(15분)',
+      'deathsat15': '데스(15분)',
+      'opp_killsat15': '상대 킬(15분)',
+      'opp_assistsat15': '상대 어시스트(15분)',
+      'opp_deathsat15': '상대 데스(15분)',
+      // 오브젝트 피쳐들
+      'firstdragon': '첫 드래곤',
+      'firstherald': '첫 전령',
+      'firsttower': '첫 타워',
+      'firstblood': '퍼스트 블러드',
+      'firstmidtower': '첫 미드 타워'
+    };
+    
+    // 피쳐 이름을 한국어로 변환하는 함수
+    function getKoreanName(featureName) {
+      return featureNameMap[featureName] || featureName;
+    }
 
     async function loadModelInfo() {
       const r = await fetch(MODEL_INFO_URL);
@@ -120,32 +165,96 @@
       const obj10 = document.getElementById('obj10');
       const obj15 = document.getElementById('obj15');
       objList.forEach(name => {
-        obj10.appendChild(makeCheckbox(`obj10__${name}`, name));
-        obj15.appendChild(makeCheckbox(`obj15__${name}`, name));
+        obj10.appendChild(makeCheckbox(`obj10__${name}`, getKoreanName(name)));
+        obj15.appendChild(makeCheckbox(`obj15__${name}`, getKoreanName(name)));
       });
 
-      feat10List = all10.filter(c => !objList.includes(c));
-      feat15List = all15.filter(c => !objList.includes(c));
+      // 자동 계산 피처들 정의 (차이값만 자동 계산, KDA는 사용자 입력)
+      const autoCalcFeatures = [
+        'golddiffat10', 'csdiffat10',
+        'golddiffat15', 'csdiffat15'
+      ];
+      
+      // UI에 표시할 피처들 (오브젝트와 자동 계산 피처 제외)
+      feat10List = all10.filter(c => !objList.includes(c) && !autoCalcFeatures.includes(c));
+      feat15List = all15.filter(c => !objList.includes(c) && !autoCalcFeatures.includes(c));
 
       const f10 = document.getElementById('feat10');
       const f15 = document.getElementById('feat15');
-      feat10List.forEach(name => f10.appendChild(makeNumberRow(`f10__${name}`, name)));
-      feat15List.forEach(name => f15.appendChild(makeNumberRow(`f15__${name}`, name)));
+      feat10List.forEach(name => f10.appendChild(makeNumberRow(`f10__${name}`, getKoreanName(name))));
+      feat15List.forEach(name => f15.appendChild(makeNumberRow(`f15__${name}`, getKoreanName(name))));
+      
+      // 초기 계산된 값들 표시
+      updateCalculatedValues(10);
+      updateCalculatedValues(15);
+    }
+
+    function calculateDerivedFeatures(baseFeatures, which) {
+      const derived = {};
+      
+      // 차이값 계산 (우리팀 - 상대팀)
+      if (baseFeatures[`goldat${which}`] !== undefined && baseFeatures[`opp_goldat${which}`] !== undefined) {
+        derived[`golddiffat${which}`] = baseFeatures[`goldat${which}`] - baseFeatures[`opp_goldat${which}`];
+      }
+      if (baseFeatures[`csat${which}`] !== undefined && baseFeatures[`opp_csat${which}`] !== undefined) {
+        derived[`csdiffat${which}`] = baseFeatures[`csat${which}`] - baseFeatures[`opp_csat${which}`];
+      }
+      
+      return derived;
+    }
+
+    function updateCalculatedValues(which) {
+      const calcDiv = document.getElementById(`calc${which}`);
+      if (!calcDiv) return;
+      
+      // 현재 입력된 기본값들 수집
+      const baseFeatures = {};
+      const featList = which === 10 ? feat10List : feat15List;
+      
+      featList.forEach(name => {
+        const id = which === 10 ? `f10__${name}` : `f15__${name}`;
+        const el = document.getElementById(id);
+        const val = el && el.value !== '' ? Number(el.value) : 0;
+        baseFeatures[name] = isNaN(val) ? 0 : val;
+      });
+      
+      // 자동 계산된 값들 계산
+      const derived = calculateDerivedFeatures(baseFeatures, which);
+      
+      // 표시할 텍스트 생성
+      const lines = [];
+      if (derived[`golddiffat${which}`] !== undefined) {
+        lines.push(`골드차이: ${derived[`golddiffat${which}`].toFixed(0)}`);
+      }
+      if (derived[`csdiffat${which}`] !== undefined) {
+        lines.push(`CS차이: ${derived[`csdiffat${which}`].toFixed(0)}`);
+      }
+      
+      calcDiv.textContent = lines.length > 0 ? lines.join(' | ') : '값을 입력하면 자동 계산됩니다';
     }
 
     function gatherFeaturesAt(which, featList) {
       const obj = {};
+      
+      // 오브젝트 피처들 추가
       objList.forEach(name => {
         const id = which === 10 ? `obj10__${name}` : `obj15__${name}`;
         const el = document.getElementById(id);
         obj[name] = el && el.checked ? 1 : 0;
       });
+      
+      // UI에서 입력받은 피처들 추가
       featList.forEach(name => {
         const id = which === 10 ? `f10__${name}` : `f15__${name}`;
         const el = document.getElementById(id);
         const val = el && el.value !== '' ? Number(el.value) : 0;
         obj[name] = isNaN(val) ? 0 : val;
       });
+      
+      // 자동 계산된 피처들 추가
+      const derived = calculateDerivedFeatures(obj, which);
+      Object.assign(obj, derived);
+      
       return obj;
     }
 
@@ -155,6 +264,14 @@
       document.getElementById('resMeta').innerHTML = '두 시점(10·15)을 모두 입력하면 표시됩니다.';
       document.getElementById('resMeta').className = 'muted';
       document.getElementById('err').textContent = '';
+    }
+    
+    function clearSpecificResult(which) {
+      if (which === 10) {
+        document.getElementById('res10').innerHTML = '';
+      } else if (which === 15) {
+        document.getElementById('res15').innerHTML = '';
+      }
     }
 
     function addRow(tbodyId, label, value) {
@@ -166,28 +283,33 @@
       tb.appendChild(tr);
     }
 
-    function renderResult(json) {
-      clearResults();
+    function renderResult(json, which = null) {
       const r0 = (json.results && json.results[0]) ? json.results[0] : {};
 
-      // 10분 카드
-      if (r0.p10) {
-        addRow('res10', '10분 RF',  r0.p10.rf.toFixed(3));
-        addRow('res10', '10분 XGB', r0.p10.xgb.toFixed(3));
-        addRow('res10', '10분 LR',  r0.p10.lr.toFixed(3));
-      }
-      if (r0.meta_prob_10 != null) {
-        addRow('res10', '10분 메타', r0.meta_prob_10.toFixed(3));
+      // 10분 카드 (10분 예측이거나 통합 예측일 때)
+      if (which === 10 || which === null) {
+        if (r0.p10) {
+          clearSpecificResult(10);
+          addRow('res10', '10분 RF',  r0.p10.rf.toFixed(3));
+          addRow('res10', '10분 XGB', r0.p10.xgb.toFixed(3));
+          addRow('res10', '10분 LR',  r0.p10.lr.toFixed(3));
+        }
+        if (r0.meta_prob_10 != null) {
+          addRow('res10', '10분 메타', r0.meta_prob_10.toFixed(3));
+        }
       }
 
-      // 15분 카드
-      if (r0.p15) {
-        addRow('res15', '15분 RF',  r0.p15.rf.toFixed(3));
-        addRow('res15', '15분 XGB', r0.p15.xgb.toFixed(3));
-        addRow('res15', '15분 LR',  r0.p15.lr.toFixed(3));
-      }
-      if (r0.meta_prob_15 != null) {
-        addRow('res15', '15분 메타', r0.meta_prob_15.toFixed(3));
+      // 15분 카드 (15분 예측이거나 통합 예측일 때)
+      if (which === 15 || which === null) {
+        if (r0.p15) {
+          clearSpecificResult(15);
+          addRow('res15', '15분 RF',  r0.p15.rf.toFixed(3));
+          addRow('res15', '15분 XGB', r0.p15.xgb.toFixed(3));
+          addRow('res15', '15분 LR',  r0.p15.lr.toFixed(3));
+        }
+        if (r0.meta_prob_15 != null) {
+          addRow('res15', '15분 메타', r0.meta_prob_15.toFixed(3));
+        }
       }
 
       // 통합 메타 카드 (⚠️ 두 시점 모두 있을 때만 표시)
@@ -196,10 +318,10 @@
         const parts = [];
         parts.push(`통합 메타 확률: <strong>${r0.meta_prob_all.toFixed(3)}</strong>`);
         if (r0.reversal_by_xgb != null) {
-          parts.push(`역전여부(xgb기준): <strong>${r0.reversal_by_xgb ? 'YES' : 'NO'}</strong>`);
+          parts.push(`역전 예상 여부: <strong>${r0.reversal_by_xgb ? 'YES' : 'NO'}</strong>`);
         }
         const metaDiv = document.getElementById('resMeta');
-        metaDiv.innerHTML = `<div class="ok">버전 ${json.version || 'n/a'} · ${parts.join(' · ')}</div>`;
+        metaDiv.innerHTML = `${parts.join(' · ')}`;
         metaDiv.className = 'ok';
       }
       // hasBoth가 아니면 resMeta는 기본 안내 문구 그대로 둠
@@ -220,9 +342,10 @@
       document.getElementById('err').textContent = '';
       try {
         const features_at10 = gatherFeaturesAt(10, feat10List);
+        console.log('10분 예측 전송 데이터:', features_at10);
         const payload = { sample: { features_at10 }, return_reversal: false };
         const json = await callPredict(payload);
-        renderResult(json);
+        renderResult(json, 10);
       } catch (e) {
         document.getElementById('err').textContent = e.message;
       } finally {
@@ -244,11 +367,26 @@
         if (!has10 && !has15) throw new Error('최소한 15분 값은 입력하세요.');
 
         const payload = { sample: {}, return_reversal: true };
-        if (has10) payload.sample.features_at10 = features_at10;
-        if (has15) payload.sample.features_at15 = features_at15;
+        if (has10) {
+          payload.sample.features_at10 = features_at10;
+          console.log('10분 데이터:', features_at10);
+        }
+        if (has15) {
+          payload.sample.features_at15 = features_at15;
+          console.log('15분 데이터:', features_at15);
+        }
 
         const json = await callPredict(payload);
-        renderResult(json); // 둘 다 있으면 통합, 아니면 각 시점만 표시
+        
+        // 둘 다 있으면 통합 예측 (null로 전달하여 모든 시점 표시)
+        // 하나만 있으면 해당 시점만 표시
+        if (has10 && has15) {
+          renderResult(json, null); // 통합 예측
+        } else if (has15) {
+          renderResult(json, 15); // 15분만 예측
+        } else if (has10) {
+          renderResult(json, 10); // 10분만 예측
+        }
       } catch (e) {
         document.getElementById('err').textContent = e.message;
       } finally {

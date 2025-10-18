@@ -29,12 +29,115 @@
     .spinner { display: none; }
     .cards { display: grid; grid-template-columns: 1fr; gap: 12px; }
     @media (min-width: 900px) { .cards { grid-template-columns: 1fr 1fr 1fr; } }
+    
+    /* 팀 선택 스타일 */
+    .team-selection { margin: 20px 0; }
+    .team-container { 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      gap: 30px; 
+      flex-wrap: wrap;
+    }
+    .team-section { 
+      text-align: center; 
+      min-width: 200px;
+    }
+    .team-section h3 { 
+      margin: 0 0 12px; 
+      font-size: 16px; 
+      color: #333; 
+    }
+    .team-selector { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      gap: 12px; 
+    }
+    .team-select { 
+      padding: 8px 12px; 
+      border: 1px solid #ccc; 
+      border-radius: 8px; 
+      font-size: 14px; 
+      min-width: 150px;
+    }
+    .team-logo { 
+      width: 80px; 
+      height: 80px; 
+      border: 2px solid #e5e7eb; 
+      border-radius: 12px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      background: #f9fafb;
+      overflow: hidden;
+    }
+    .team-logo img { 
+      max-width: 100%; 
+      max-height: 100%; 
+      object-fit: contain; 
+    }
+    .vs-text { 
+      font-size: 24px; 
+      font-weight: bold; 
+      color: #666; 
+      margin: 0 20px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>LoL 승리 예측()</h1>
+    <h1>LoL 승리 예측</h1>
     <div id="version" class="version"></div>
+    
+    <!-- 팀 선택 섹션 -->
+    <div class="team-selection">
+      <div class="team-container">
+        <div class="team-section">
+          <h3>왼쪽 팀</h3>
+          <div class="team-selector">
+            <select id="leftTeam" class="team-select">
+              <option value="">팀을 선택하세요</option>
+              <option value="AL">AL</option>
+              <option value="BLG">BLG</option>
+              <option value="CFO">CFO</option>
+              <option value="FLY">FLY</option>
+              <option value="G2">G2</option>
+              <option value="KT">KT</option>
+              <option value="PSG">PSG</option>
+              <option value="T1">T1</option>
+              <option value="TES">TES</option>
+              <option value="젠">젠</option>
+              <option value="한">한</option>
+            </select>
+            <div class="team-logo" id="leftTeamLogo"></div>
+          </div>
+        </div>
+        
+        <div class="vs-text">VS</div>
+        
+        <div class="team-section">
+          <h3>오른쪽 팀</h3>
+          <div class="team-selector">
+            <select id="rightTeam" class="team-select">
+              <option value="">팀을 선택하세요</option>
+              <option value="AL">AL</option>
+              <option value="BLG">BLG</option>
+              <option value="CFO">CFO</option>
+              <option value="FLY">FLY</option>
+              <option value="G2">G2</option>
+              <option value="KT">KT</option>
+              <option value="PSG">PSG</option>
+              <option value="T">T</option>
+              <option value="TES">TES</option>
+              <option value="젠">젠</option>
+              <option value="한">한</option>
+            </select>
+            <div class="team-logo" id="rightTeamLogo"></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="grid">
       <fieldset>
@@ -400,8 +503,42 @@
       // 필요하면 입력값 초기화 로직 추가
     }
 
+    // 팀 로고 업데이트 함수
+    function updateTeamLogo(teamSelectId, logoDivId) {
+      const select = document.getElementById(teamSelectId);
+      const logoDiv = document.getElementById(logoDivId);
+      
+      if (select.value) {
+        const img = document.createElement('img');
+        img.src = `/static/이미지/${select.value}.png`;
+        img.alt = select.value;
+        img.onerror = function() {
+          logoDiv.innerHTML = `<div style="color: #666; font-size: 12px;">${select.value}</div>`;
+        };
+        logoDiv.innerHTML = '';
+        logoDiv.appendChild(img);
+      } else {
+        logoDiv.innerHTML = '';
+      }
+    }
+
+    // 팀 선택 이벤트 리스너 설정
+    function setupTeamSelectors() {
+      const leftTeamSelect = document.getElementById('leftTeam');
+      const rightTeamSelect = document.getElementById('rightTeam');
+      
+      leftTeamSelect.addEventListener('change', function() {
+        updateTeamLogo('leftTeam', 'leftTeamLogo');
+      });
+      
+      rightTeamSelect.addEventListener('change', function() {
+        updateTeamLogo('rightTeam', 'rightTeamLogo');
+      });
+    }
+
     window.addEventListener('DOMContentLoaded', async () => {
       await loadModelInfo();
+      setupTeamSelectors();
       document.getElementById('btnPredict10').addEventListener('click', doPredict10);
       document.getElementById('btnPredict15').addEventListener('click', doPredict15);
       document.getElementById('btnReset').addEventListener('click', doReset);

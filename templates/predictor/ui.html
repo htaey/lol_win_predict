@@ -15,6 +15,11 @@
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     fieldset { border: 1px solid rgba(201,164,92,0.25); border-radius: 16px; padding: 16px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.15)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03), 0 8px 24px rgba(0,0,0,0.35); }
     legend { padding: 0 6px; font-weight: 600; color: #f0d9a0; font-family: "Gowun Dodum", sans-serif; letter-spacing: 0.2px; font-size: 20px; }
+    .team-features-section { margin-top: 16px; margin-bottom: 16px; }
+    .team-features-section:first-of-type { margin-top: 0; }
+    .team-features-title { font-size: 17px; font-weight: 600; color: #f0d9a0; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(201,164,92,0.2); font-family: "Gowun Dodum", sans-serif; letter-spacing: 0.2px; }
+    .team-features-section.blue-team .team-features-title { color: #4a9eff; }
+    .team-features-section.red-team .team-features-title { color: #ff6b6b; }
     .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
     label { font-size: 16px; color: #cbd5e1; }
     input[type="number"] { width: 140px; max-width: 45vw; justify-self: end; padding: 8px 10px; border: 1px solid rgba(148,163,184,0.28); border-radius: 10px; background: rgba(255,255,255,0.03); color: #e2e8f0; box-shadow: none; appearance: textfield; -moz-appearance: textfield; }
@@ -93,7 +98,7 @@
     <div class="team-selection">
       <div class="team-container">
         <div class="team-section">
-          <h3>왼쪽 팀</h3>
+          <h3>블루 팀</h3>
           <div class="team-selector">
             <select id="leftTeam" class="team-select">
               <option value="">팀을 선택하세요</option>
@@ -106,8 +111,8 @@
               <option value="PSG">PSG</option>
               <option value="T1">T1</option>
               <option value="TES">TES</option>
-              <option value="젠">젠</option>
-              <option value="한">한</option>
+              <option value="GEN.G">GEN.G</option>
+              <option value="HLE">HLE</option>
             </select>
             <div class="team-logo" id="leftTeamLogo"></div>
           </div>
@@ -116,7 +121,7 @@
         <div class="vs-text">VS</div>
         
         <div class="team-section">
-          <h3>오른쪽 팀</h3>
+          <h3>레드 팀</h3>
           <div class="team-selector">
             <select id="rightTeam" class="team-select">
               <option value="">팀을 선택하세요</option>
@@ -129,8 +134,8 @@
               <option value="PSG">PSG</option>
               <option value="T1">T1</option>
               <option value="TES">TES</option>
-              <option value="젠">젠</option>
-              <option value="한">한</option>
+              <option value="GEN.G">GEN.G</option>
+              <option value="HLE">HLE</option>
             </select>
             <div class="team-logo" id="rightTeamLogo"></div>
           </div>
@@ -140,21 +145,41 @@
 
     <div class="grid">
       <fieldset>
-        <legend>10분 상황 (왼쪽 팀 기준)</legend>
+        <legend>10분 상황 (블루 팀 기준)</legend>
         <div><strong>오브젝트 상황</strong></div>
         <div id="obj10" class="checkbox-row"></div>
         <div class="muted">※ 아래에 매치 10분 시점을 입력</div>
-        <div id="feat10"></div>
+        
+        <div class="team-features-section blue-team">
+          <div class="team-features-title">블루 팀</div>
+          <div id="feat10-blue"></div>
+        </div>
+        
+        <div class="team-features-section red-team">
+          <div class="team-features-title">레드 팀</div>
+          <div id="feat10-red"></div>
+        </div>
+        
         <div class="muted" style="margin-top: 8px;"><strong>추가 피쳐:</strong></div>
         <div id="calc10" class="muted" style="font-size: 12px; line-height: 1.4;"></div>
       </fieldset>
 
       <fieldset>
-        <legend>15분 상황 (왼쪽 팀 기준)</legend>
+        <legend>15분 상황 (블루 팀 기준)</legend>
         <div><strong>오브젝트 상황</strong></div>
         <div id="obj15" class="checkbox-row"></div>
         <div class="muted">※ 아래에 매치 15분 시점을 입력</div>
-        <div id="feat15"></div>
+        
+        <div class="team-features-section blue-team">
+          <div class="team-features-title">블루 팀</div>
+          <div id="feat15-blue"></div>
+        </div>
+        
+        <div class="team-features-section red-team">
+          <div class="team-features-title">레드 팀</div>
+          <div id="feat15-red"></div>
+        </div>
+        
         <div class="muted" style="margin-top: 8px;"><strong>추가 피쳐:</strong></div>
         <div id="calc15" class="muted" style="font-size: 12px; line-height: 1.4;"></div>
       </fieldset>
@@ -235,26 +260,26 @@
     
     // 피쳐 이름 한국어 매핑
     const featureNameMap = {
-      'goldat10': '골드(10분)',
-      'csat10': 'CS(10분)',
-      'opp_goldat10': '상대 골드(10분)',
-      'opp_csat10': '상대 CS(10분)',
-      'killsat10': '킬(10분)',
-      'assistsat10': '어시스트(10분)',
-      'deathsat10': '데스(10분)',
-      'opp_killsat10': '상대 킬(10분)',
-      'opp_assistsat10': '상대 어시스트(10분)',
-      'opp_deathsat10': '상대 데스(10분)',
-      'goldat15': '골드(15분)',
-      'csat15': 'CS(15분)',
-      'opp_goldat15': '상대 골드(15분)',
-      'opp_csat15': '상대 CS(15분)',
-      'killsat15': '킬(15분)',
-      'assistsat15': '어시스트(15분)',
-      'deathsat15': '데스(15분)',
-      'opp_killsat15': '상대 킬(15분)',
-      'opp_assistsat15': '상대 어시스트(15분)',
-      'opp_deathsat15': '상대 데스(15분)',
+      'goldat10': '블루팀 골드',
+      'csat10': '블루팀CS',
+      'killsat10': '블루팀 킬',
+      'assistsat10': '블루팀 어시스트',
+      'deathsat10': '블루팀 데스',
+      'opp_goldat10': '레드팀 골드',
+      'opp_csat10': '레드팀 CS',
+      'opp_killsat10': '레드팀 킬',
+      'opp_assistsat10': '레드팀 어시스트',
+      'opp_deathsat10': '레드팀 데스',
+      'goldat15': '블루팀 골드',
+      'csat15': '블루팀CS',
+      'killsat15': '블루팀 킬',
+      'assistsat15': '블루팀 어시스트',
+      'deathsat15': '블루팀 데스',
+      'opp_goldat15': '레드팀 골드',
+      'opp_csat15': '레드팀 CS',
+      'opp_killsat15': '레드팀 킬',
+      'opp_assistsat15': '레드팀 어시스트',
+      'opp_deathsat15': '레드팀 데스',
       // 오브젝트 피쳐들
       'firstdragon': '첫 드래곤',
       'firstherald': '첫 전령',
@@ -295,10 +320,23 @@
       feat10List = all10.filter(c => !objList.includes(c) && !autoCalcFeatures.includes(c));
       feat15List = all15.filter(c => !objList.includes(c) && !autoCalcFeatures.includes(c));
 
-      const f10 = document.getElementById('feat10');
-      const f15 = document.getElementById('feat15');
-      feat10List.forEach(name => f10.appendChild(makeNumberRow(`f10__${name}`, getKoreanName(name))));
-      feat15List.forEach(name => f15.appendChild(makeNumberRow(`f15__${name}`, getKoreanName(name))));
+      // 블루팀과 레드팀 피쳐 분리
+      const feat10Blue = feat10List.filter(name => !name.startsWith('opp_'));
+      const feat10Red = feat10List.filter(name => name.startsWith('opp_'));
+      const feat15Blue = feat15List.filter(name => !name.startsWith('opp_'));
+      const feat15Red = feat15List.filter(name => name.startsWith('opp_'));
+
+      // 블루팀 피쳐들을 블루팀 섹션에 추가
+      const f10Blue = document.getElementById('feat10-blue');
+      const f15Blue = document.getElementById('feat15-blue');
+      feat10Blue.forEach(name => f10Blue.appendChild(makeNumberRow(`f10__${name}`, getKoreanName(name))));
+      feat15Blue.forEach(name => f15Blue.appendChild(makeNumberRow(`f15__${name}`, getKoreanName(name))));
+
+      // 레드팀 피쳐들을 레드팀 섹션에 추가
+      const f10Red = document.getElementById('feat10-red');
+      const f15Red = document.getElementById('feat15-red');
+      feat10Red.forEach(name => f10Red.appendChild(makeNumberRow(`f10__${name}`, getKoreanName(name))));
+      feat15Red.forEach(name => f15Red.appendChild(makeNumberRow(`f15__${name}`, getKoreanName(name))));
       
       // 초기 계산된 값들 표시
       updateCalculatedValues(10);

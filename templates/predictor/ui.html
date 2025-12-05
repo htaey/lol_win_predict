@@ -577,7 +577,7 @@ function setMeter(prefix, prob) {
       
       if (select.value) {
         const img = document.createElement('img');
-        img.src = `/static/이미지/${select.value}.png`;
+        img.src = `/static/image/${select.value}.png`;
         img.alt = select.value;
         img.onerror = function() {
           logoDiv.innerHTML = `<div style="color: #666; font-size: 12px;">${select.value}</div>`;

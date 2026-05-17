@@ -6,19 +6,19 @@
 졸업 과제로 진행되었으며, 실제 게임 데이터를 활용하여\
 팀의 승리 확률을 분석하고 예측 모델을 구축하는 것을 목표로 합니다.
 
-# 프로젝트 폴더로 이동
+1. 프로젝트 폴더로 이동
 cd c:\Users\User\Desktop\a\lol_win_predict
 
-# 가상환경 생성
+2. 가상환경 생성
 py -m venv venv
 
-# 가상환경 활성화
+3. 가상환경 활성화
 .\venv\Scripts\Activate.ps1
 
-# 패키지 설치
+4. 패키지 설치
 pip install -r requirements.txt
 
-# 서버 실행
+5. 서버 실행
 python manage.py runserver
 
 ------------------------------------------------------------------------

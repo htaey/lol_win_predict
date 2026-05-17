@@ -121,5 +121,6 @@ python src/predict.py
 -   실시간 경기 데이터 기반 예측 시스템
 -   웹 기반 시각화 대시보드 개발
 
+# 실제 페이지
 <img width="779" height="923" alt="image" src="https://github.com/user-attachments/assets/9bc5c9ca-bc77-40d3-a253-6378486b7584" />
 
